@@ -1,0 +1,15 @@
+{
+    "name": "mudassir/garage",
+    "authors": [
+        {
+            "name": "Mohammed Mudassir",
+            "email": "hello@mudasir.me"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Garage\\": "src/"
+        }
+    }
+}
