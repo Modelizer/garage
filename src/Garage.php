@@ -2,71 +2,80 @@
 
 namespace Garage;
 
-use ExceededGarageCapacity;
+use Exception;
+use Garage\Exceptions\ExceededGarageCapacity;
+use Garage\Exceptions\FloorNotFoundException;
 
 /**
  * @author Mohammed Mudassir <hello@mudasir.me>
  */
 class Garage
 {
-    protected $slots = 0;
+    /** @var int $maxCapacity */
+    protected $maxCapacity = 0;
 
-    protected $maxSlotCount = 0;
-
-    protected $vehicles = [];
+    /** @var int $parkedVehiclesCount */
+    protected $parkedVehiclesCount = 0;
 
     /** @var \Garage\Floor[] $floors */
     protected $floors = [];
 
+    /**
+     * @param array $floors
+     * @throws \Exception
+     */
     public function __construct(array $floors)
     {
-        $this->floors = $floors;
+        foreach ($floors as $floor) {
+            // Here we can do validation before putting floors into Garage. It is possible user might pass
+            // objects other than floor.
+            if (! $floor instanceof Floor) {
+                throw new Exception('Only floor objects are allowed while initialising garage.');
+            }
 
-        /** @var \Garage\Floor $floor */
-        foreach ($this->floors as $floor) {
             $this->floors[] = $floor;
-            $this->maxSlotCount += $floor->allowedCapacity();
+            $this->maxCapacity += $floor->maxCapacity();
         }
     }
 
-    public function capacity(int $slot)
+    /**
+     * @param \Garage\VehicleContract $vehicle
+     * @param int $floorLevel
+     * @return $this
+     * @throws \Garage\Exceptions\ExceededGarageCapacity
+     * @throws \Garage\Exceptions\FloorNotFoundException
+     * @throws \Garage\Exceptions\FloorParkingExceededException
+     */
+    public function vehicleArrived(VehicleContract $vehicle, $floorLevel = 0)
     {
-        if ($slot + $this->slots > $this->maxSlotCount) {
-            throw new Exceptions\ExceededGarageCapacity;
+        // The purpose of keeping track on accumulated parking slots is to not allow
+        // code to go any further when the parking garage is full.
+        // In SRP it does not mean that garage can not keep track of its capacity.
+        // It should be noted here that floor should take care where exactly car should be parked
+        // and other complex floor related logic can be pushed into Floor class..
+        if ($this->parkedVehiclesCount == $this->maxCapacity) {
+            throw new ExceededGarageCapacity;
         }
 
-        $this->slots += $slot;
+        $this->getFloor($floorLevel)->vehicleArrived($vehicle);
+        $this->parkedVehiclesCount++;
 
         return $this;
     }
 
     /**
-     * @param \Garage\VehicleContract $vehicleContract
-     * @return $this
-     * @throws \Garage\Exceptions\ExceededGarageCapacity
+     * @param int $level
+     * @return \Garage\Floor
+     * @throws \Garage\Exceptions\FloorNotFoundException
      */
-    public function vehicleArrived(VehicleContract $vehicleContract)
+    public function getFloor($level = 0)
     {
-        if ($this->slots > $this->maxSlotCount) {
-            throw new \Garage\Exceptions\ExceededGarageCapacity;
-        }
-
-        $this->vehicles[] = $vehicleContract;
-        $this->slots++;
-
-        if ($vehicleContract instanceof Car) {
-            try {
-                $this->floors[1]->vehicleHasArrived();
-            } catch (\Garage\Exceptions\ExceededGarageCapacity $exception) {
-                $this->floors[0]->vehicleHasArrived();
+        foreach ($this->floors as $floor) {
+            if ($floor->getLevel() == $level) {
+                return $floor;
             }
-
-            echo "Car has arrived\n";
-        } else {
-            $this->floors[0]->vehicleHasArrived();
-            echo "Truck has arrived\n";
         }
 
-        return $this;
+        throw new FloorNotFoundException;
     }
 }

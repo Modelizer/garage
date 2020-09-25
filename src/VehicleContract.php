@@ -7,4 +7,5 @@ namespace Garage;
  */
 interface VehicleContract
 {
+    public function type();
 }

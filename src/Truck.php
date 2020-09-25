@@ -7,4 +7,8 @@ namespace Garage;
  */
 class Truck implements VehicleContract
 {
+    public function type()
+    {
+        return 'truck';
+    }
 }

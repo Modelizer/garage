@@ -2,20 +2,26 @@
 
 namespace Garage;
 
-use Garage\Exceptions\ExceededGarageCapacity;
-use Garage\Exceptions\VehicleNotAllowedException;
+use Garage\Exceptions\FloorParkingExceededException;
 
 /**
  * @author Mohammed Mudassir <hello@mudasir.me>
  */
 class Floor
 {
+    /** @var int $level */
     protected $level;
 
+    /** @var int $maxCapacity */
     protected $maxCapacity;
 
-    protected $slot;
+    /** @var array $arrivedVehicles */
+    protected $arrivedVehicles = [];
 
+    /**
+     * @param int $level
+     * @param int $capacity
+     */
     public function __construct($level = 0, $capacity = 1)
     {
         $this->level = $level;
@@ -23,45 +29,45 @@ class Floor
     }
 
     /**
-     * @return int
+     * @param \Garage\VehicleContract $vehicle
+     * @return $this
+     * @throws \Garage\Exceptions\FloorParkingExceededException
      */
-    public function allowedCapacity()
+    public function vehicleArrived(VehicleContract $vehicle)
     {
-        return $this->maxCapacity;
-    }
-
-    /**
-     * @return bool
-     * @throws \Garage\Exceptions\VehicleNotAllowedException
-     */
-    public function carsAllowed()
-    {
-        if ($this->level != 1) {
-            throw new VehicleNotAllowedException;
+        if (! $this->checkParkingAvailability()) {
+            throw new FloorParkingExceededException;
         }
 
-        return true;
-    }
+        $this->arrivedVehicles[] = $vehicle;
 
-    /**
-     * @return bool
-     * @throws \Garage\Exceptions\VehicleNotAllowedException
-     */
-    public function truckAndCarsAllowed()
-    {
-        return ! $this->carsAllowed();
-    }
-
-    public function vehicleHasArrived()
-    {
-        if ($this->maxCapacity > ($this->slot + 1)) {
-            throw new ExceededGarageCapacity;
-        }
-
-        $this->slot++;
+        echo "The {$vehicle->type()} has arrived. ";
+        echo "{$this->checkParkingAvailability()} parking slot(s) available on floor {$this->getLevel()}.\n";
 
         return $this;
     }
 
+    /**
+     * @return int|mixed
+     */
+    public function checkParkingAvailability()
+    {
+        return $this->maxCapacity - count($this->arrivedVehicles);
+    }
 
+    /**
+     * @return int
+     */
+    public function getLevel()
+    {
+        return $this->level;
+    }
+
+    /**
+     * @return int
+     */
+    public function maxCapacity()
+    {
+        return $this->maxCapacity;
+    }
 }
